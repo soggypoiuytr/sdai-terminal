@@ -3,6 +3,7 @@ import {createTransport} from './transport.mjs';
 import {roomCode,activeController,ownsControl,claimControl,scrubView,validateGM} from './core.mjs';
 const $=s=>document.querySelector(s),params=new URLSearchParams(location.search),demo=params.get('demo')==='1';
 let api,room=null,joined=false,person=null,bridge=null,publishTimer,lastSent='',lastView='',lastOwner=false,connected=false,toastTimer,resetTag=null,noticeCount=0;
+let observedOperator,controlNoticeTimer;
 const code=roomCode(params.get('sala')||CONFIG.defaultRoom);
 $('#room-label').textContent='SALA / '+code.toUpperCase();$('#master-link').href='mestre/?sala='+code+(demo?'&demo=1':'');$('#demo-banner').hidden=!demo;$('#demo-link').href='?sala='+code+'&demo=1';
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,5000);}
@@ -11,8 +12,27 @@ function sendView(){if(publishTimer||!bridge||!owns())return;publishTimer=setTim
 function setupBridge(){const b=$('#terminal-frame').contentWindow?.SDAIBridge;if(!b||bridge===b)return;bridge=b;bridge.start();bridge.onChange(sendView);if(room?.view)bridge.apply(room.view);bridge.setGM(validateGM(room?.gm));bridge.setReadOnly(!owns());if(owns())sendView();}
 window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===$('#terminal-frame').contentWindow&&e.data?.type==='sdai-bridge-ready')setupBridge();});$('#terminal-frame').onload=setupBridge;
 function participantRows(){const target=$('#participants-list');target.replaceChildren();for(const [uid,p] of Object.entries(room?.participants||{})){if(api.now()-p.lastSeen>60000)continue;const row=document.createElement('div');row.className='participant';const text=document.createElement('div'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=p.character;small.textContent=p.name+(room.requests?.[uid]?' / PEDIU O CONTROLE':'');text.append(strong,small);row.append(text);if(owns()&&uid!==api.uid){const button=document.createElement('button');button.textContent='PASSAR';button.onclick=async()=>{try{await api.set('controller',{uid,character:p.character,leaseUntil:api.now()+45000});await api.set('requests/'+uid,null);}catch(e){toast('Não foi possível transferir o controle.');}};row.append(button);}target.append(row);}}
+function notifyControl(current){
+ const previous=observedOperator;
+ // First snapshot establishes the baseline; lease renewals never replay a cue.
+ observedOperator=current?{uid:current.uid,character:current.character}:null;
+ if(!joined||previous===undefined||previous?.uid===current?.uid)return;
+ const notification=$('#control-notification');
+ $('#control-notification-text').textContent=current
+  ? current.character+' está controlando o terminal agora'
+  : previous.character+' deixou de controlar o terminal';
+ notification.dataset.action=current?'claim':'release';notification.hidden=false;
+ notification.getAnimations?.().forEach(animation=>animation.cancel());
+ if(!matchMedia('(prefers-reduced-motion: reduce)').matches)notification.animate(
+  [{opacity:0,transform:'translate(-50%, -12px) scale(.97)'},{opacity:1,transform:'translate(-50%, 0) scale(1)'}],
+  {duration:320,easing:'cubic-bezier(.2,.8,.2,1)'});
+ bridge?.playControlCue(current?'claim':'release');
+ clearTimeout(controlNoticeTimer);controlNoticeTimer=setTimeout(()=>notification.hidden=true,4200);
+}
 function updateUI(){
  const current=activeController(room,api?.now()),own=owns(),gm=validateGM(room?.gm);$('#connection').textContent=connected?(demo?'CONEXÃO LOCAL':'SESSÃO CONECTADA'):'SEM CONEXÃO / CONTROLE SUSPENSO';$('#connection').classList.toggle('offline',!connected);
+ if(connected)notifyControl(current);
+ $('#control-strip').dataset.control=own?'mine':current?'occupied':'free';
  $('#operator').textContent=current?'TERMINAL OPERADO POR: '+current.character:'TERMINAL SEM OPERADOR';$('#spectator-hint').textContent=own?'VOCÊ ESTÁ OPERANDO':'ACOMPANHANDO A SESSÃO';$('#claim').hidden=!!current;$('#claim').disabled=!connected||gm.blocked;$('#request').hidden=!current||own;$('#request').disabled=!!room?.requests?.[api?.uid]||!connected||gm.blocked;$('#release').hidden=!own;$('#block-overlay').hidden=!joined||!gm.blocked;$('#block-message').textContent=gm.blockMessage||'Acesso suspenso pela central.';$('#control-strip').hidden=!joined;$('#participants-toggle').hidden=!joined;
  if(!joined){const currentValue=$('#character').value,signature=JSON.stringify(gm.characters);if($('#character').dataset.signature!==signature){$('#character').dataset.signature=signature;$('#character').replaceChildren(...gm.characters.map(name=>{const o=document.createElement('option');o.value=o.textContent=name;return o;}));if(gm.characters.includes(currentValue))$('#character').value=currentValue;}$('#join').disabled=!connected||!room?.gm||!gm.characters.length;$('#lobby-status').textContent=room?.gm?'Escolha seu personagem para acompanhar a sessão.':'Aguardando o mestre iniciar esta sala.';}
  if(joined&&Object.keys(gm.notices||{}).length>noticeCount)toast('Novo comunicado na Rede Interna.');noticeCount=Object.keys(gm.notices||{}).length;

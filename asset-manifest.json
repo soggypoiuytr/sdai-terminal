@@ -553,5 +553,13 @@
     "mime": "image/png",
     "size": 812216,
     "sha256": "490adfe834eca96967b09597d97c0097e20e55b8d8b5637ac32194e5e18bff8b"
+  },
+  "assets/control-claim.wav": {
+    "size": 161678,
+    "sha256": "b2c357b6bb00494fce472e125b96750b7b5adc30a5c032104aacb407c8259665"
+  },
+  "assets/control-release.wav": {
+    "size": 211158,
+    "sha256": "121bd88d891bc81d9b0625ae49e0b0f72bbe02f5656585bd061e82c0a46383b5"
   }
 }
