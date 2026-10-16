@@ -1,0 +1,35 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === 'rQeOHnPPkdhMm8TK0Px31ge3Mpp2'",
+        "gm": { ".validate": "newData.hasChildren(['alert', 'blocked', 'characters'])" },
+        "participants": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['name','character','lastSeen']) && newData.child('name').isString() && newData.child('name').val().length <= 50 && newData.child('character').isString() && newData.child('character').val().length <= 60 && newData.child('lastSeen').isNumber()"
+          }
+        },
+        "requests": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('rooms').child($room).child('controller').child('uid').val() === auth.uid)",
+            ".validate": "newData.hasChildren(['character','requestedAt']) && newData.child('character').isString() && newData.child('requestedAt').isNumber()"
+          }
+        },
+        "controller": {
+          ".write": "auth != null && ((!newData.exists() && data.child('uid').val() === auth.uid) || (newData.exists() && root.child('rooms').child($room).child('gm').child('blocked').val() !== true && ((newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid || data.child('leaseUntil').val() < now)) || (data.child('uid').val() === auth.uid && root.child('rooms').child($room).child('participants').child(newData.child('uid').val()).exists()))))",
+          ".validate": "newData.hasChildren(['uid','character','leaseUntil']) && newData.child('uid').isString() && newData.child('character').isString() && newData.child('character').val().length <= 60 && newData.child('leaseUntil').isNumber() && newData.child('leaseUntil').val() > now && newData.child('leaseUntil').val() <= now + 60000"
+        },
+        "view": {
+          ".write": "auth != null && root.child('rooms').child($room).child('gm').child('blocked').val() !== true && root.child('rooms').child($room).child('controller').child('uid').val() === auth.uid && root.child('rooms').child($room).child('controller').child('leaseUntil').val() > now",
+          ".validate": "newData.hasChildren(['state','author','version']) && newData.child('author').val() === auth.uid && (newData.child('input').child('secret').val() !== true || newData.child('input').child('value').val() === '')"
+        }
+      }
+    }
+  }
+}
+
+

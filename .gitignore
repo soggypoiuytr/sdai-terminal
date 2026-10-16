@@ -1,0 +1,5 @@
+# Guia reservado: preservado apenas na cópia local.
+/docs/GUIA_MESTRE.md
+node_modules/
+.env
+.env.*

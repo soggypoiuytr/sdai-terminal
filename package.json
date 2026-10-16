@@ -1,0 +1,10 @@
+{
+  "name": "sdai-terminal-compartilhado",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Terminais SDAI dos jogadores e do mestre para GitHub Pages e Firebase Realtime Database.",
+  "scripts": {
+    "test": "node --test tests/session.test.mjs && node tests/bridge.test.cjs && node tests/rules.test.cjs && node tests/assets.test.cjs"
+  },
+  "type": "module"
+}
