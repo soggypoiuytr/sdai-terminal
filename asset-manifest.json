@@ -561,5 +561,9 @@
   "assets/control-release.wav": {
     "size": 211158,
     "sha256": "121bd88d891bc81d9b0625ae49e0b0f72bbe02f5656585bd061e82c0a46383b5"
+  },
+  "assets/network-notice.wav": {
+    "size": 92566,
+    "sha256": "4227efe424a53d73b480800ab8d4ec651dc7d6d377f445236733bfa4234f10bd"
   }
 }

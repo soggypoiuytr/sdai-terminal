@@ -2,7 +2,7 @@ import {CONFIG} from './config.js';
 import {createTransport} from './transport.mjs';
 import {roomCode,activeController,ownsControl,claimControl,scrubView,validateGM} from './core.mjs';
 const $=s=>document.querySelector(s),params=new URLSearchParams(location.search),demo=params.get('demo')==='1';
-let api,room=null,joined=false,person=null,bridge=null,publishTimer,lastSent='',lastView='',lastOwner=false,connected=false,toastTimer,resetTag=null,noticeCount=0;
+let api,room=null,joined=false,person=null,bridge=null,publishTimer,lastSent='',lastView='',lastOwner=false,connected=false,toastTimer,resetTag=null,noticeIds=null;
 let observedOperator,controlNoticeTimer;
 const code=roomCode(params.get('sala')||CONFIG.defaultRoom);
 $('#room-label').textContent='SALA / '+code.toUpperCase();$('#master-link').href='mestre/?sala='+code+(demo?'&demo=1':'');$('#demo-banner').hidden=!demo;$('#demo-link').href='?sala='+code+'&demo=1';
@@ -35,7 +35,9 @@ function updateUI(){
  $('#control-strip').dataset.control=own?'mine':current?'occupied':'free';
  $('#operator').textContent=current?'TERMINAL OPERADO POR: '+current.character:'TERMINAL SEM OPERADOR';$('#spectator-hint').textContent=own?'VOCÊ ESTÁ OPERANDO':'ACOMPANHANDO A SESSÃO';$('#claim').hidden=!!current;$('#claim').disabled=!connected||gm.blocked;$('#request').hidden=!current||own;$('#request').disabled=!!room?.requests?.[api?.uid]||!connected||gm.blocked;$('#release').hidden=!own;$('#block-overlay').hidden=!joined||!gm.blocked;$('#block-message').textContent=gm.blockMessage||'Acesso suspenso pela central.';$('#control-strip').hidden=!joined;$('#participants-toggle').hidden=!joined;
  if(!joined){const currentValue=$('#character').value,signature=JSON.stringify(gm.characters);if($('#character').dataset.signature!==signature){$('#character').dataset.signature=signature;$('#character').replaceChildren(...gm.characters.map(name=>{const o=document.createElement('option');o.value=o.textContent=name;return o;}));if(gm.characters.includes(currentValue))$('#character').value=currentValue;}$('#join').disabled=!connected||!room?.gm||!gm.characters.length;$('#lobby-status').textContent=room?.gm?'Escolha seu personagem para acompanhar a sessão.':'Aguardando o mestre iniciar esta sala.';}
- if(joined&&Object.keys(gm.notices||{}).length>noticeCount)toast('Novo comunicado na Rede Interna.');noticeCount=Object.keys(gm.notices||{}).length;
+ const incomingIds=Object.keys(gm.notices||{});
+ if(joined&&noticeIds!==null&&incomingIds.some(id=>!noticeIds.has(id))){toast('Novo comunicado na Rede Interna.');bridge?.playNoticeCue();}
+ noticeIds=new Set(incomingIds);
  if(bridge&&joined){if(resetTag!==null&&resetTag!==(gm.resetToken||'')){bridge.reset();lastView='';lastSent='';}bridge.setReadOnly(!own);bridge.setGM(gm);if(room?.view&&(!own||room.view.author!==api.uid)&&room.view.version!==lastView){lastView=room.view.version;bridge.apply(room.view);}if(own&&!lastOwner){api.armRelease().catch(()=>{});lastSent='';sendView();}lastOwner=own;}
  resetTag=gm.resetToken||'';participantRows();
 }
